@@ -24,7 +24,7 @@ jobs:
       - name: System update & tools
         run: pacman -Syu --noconfirm --needed git jq github-cli
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Create build user
         run: |
