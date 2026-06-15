@@ -63,8 +63,9 @@ jobs:
         run: |
           # shellcheck disable=SC1091
           source ./paw.conf
-          gh release view "$PAW_RELEASE_TAG" >/dev/null 2>&1 \
-            || gh release create "$PAW_RELEASE_TAG" --title "paw repo" --notes "Rolling package repository"
-          gh release upload "$PAW_RELEASE_TAG" out/* --clobber
+          gh release view "$PAW_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
+            || gh release create "$PAW_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+                 --title "paw repo" --notes "Rolling package repository"
+          gh release upload "$PAW_RELEASE_TAG" out/* --repo "$GITHUB_REPOSITORY" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
