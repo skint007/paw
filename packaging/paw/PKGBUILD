@@ -1,0 +1,17 @@
+# Maintainer: skint007 <paw-repo.cyclic942@passmail.net>
+pkgname=paw
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Friendly TUI front-end for a personal pacman repo"
+arch=('any')
+url="https://github.com/skint007/paw"
+license=('MIT')
+depends=('pacman' 'gum')
+optdepends=('expac: richer package listings in paw')
+source=('paw' 'LICENSE')
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+  install -Dm755 "$srcdir/paw" "$pkgdir/usr/bin/paw"
+  install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

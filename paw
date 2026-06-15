@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+# paw — friendly TUI front-end for your personal pacman repo.
+#
+# In the binary-repo model the synced pacman database is the source of truth,
+# so this is a thin wrapper over `pacman` + `gum`. Updates flow through the
+# normal `pacman -Syu`, but `paw update` is here for muscle memory.
+set -euo pipefail
+
+REPO_NAME="${PAW_REPO_NAME:-paw}"
+
+die()  { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "missing dependency: $1"; }
+
+need pacman
+need gum
+
+repo_exists() { pacman -Sl "$REPO_NAME" >/dev/null 2>&1; }
+
+# Emit one row per package: "<mark>\t<name>\t<version>\t<desc>"
+_table() {
+  repo_exists || die "pacman repo '$REPO_NAME' not configured — run install.sh first"
+
+  declare -A DESC=()
+  if command -v expac >/dev/null 2>&1; then
+    local names
+    names=$(pacman -Slq "$REPO_NAME" 2>/dev/null) || true
+    if [[ -n "$names" ]]; then
+      while IFS=$'\t' read -r n d; do DESC["$n"]="$d"; done \
+        < <(expac -S '%n\t%d' $names 2>/dev/null)
+    fi
+  fi
+
+  pacman -Sl "$REPO_NAME" 2>/dev/null | while read -r _repo name ver rest; do
+    local mark="  "
+    [[ "$rest" == *installed* ]] && mark="✓ "
+    printf '%s\t%s\t%s\t%s\n' "$mark" "$name" "$ver" "${DESC[$name]:-}"
+  done
+}
+
+cmd_browse() {
+  local lines pkgs
+  lines=$(_table | gum filter --no-limit \
+            --header "↑↓ move · Tab multi-select · type to search · Enter install" \
+            --placeholder "Filter ${REPO_NAME} packages…") || return 0
+  [[ -z "$lines" ]] && { echo "Nothing selected."; return 0; }
+  mapfile -t pkgs < <(printf '%s\n' "$lines" | awk -F'\t' '{print $2}')
+  cmd_install "${pkgs[@]}"
+}
+
+cmd_install() {
+  [[ $# -gt 0 ]] || die "usage: paw install <pkg>..."
+  local targets=() p
+  for p in "$@"; do targets+=("$REPO_NAME/$p"); done
+  gum confirm "Install ${*}?" && sudo pacman -S --needed "${targets[@]}"
+}
+
+cmd_search() {
+  local q="${1:-}" out
+  if [[ -z "$q" ]]; then _table | column -t -s $'\t'; return; fi
+  out=$(_table | { grep -i -- "$q" || true; })
+  if [[ -n "$out" ]]; then printf '%s\n' "$out" | column -t -s $'\t'
+  else echo "No matches for '$q'."; fi
+}
+
+cmd_update() { sudo pacman -Syu; }
+
+cmd_remove() { [[ $# -gt 0 ]] || die "usage: paw remove <pkg>..."; sudo pacman -Rns "$@"; }
+
+cmd_list() {
+  local out
+  out=$(_table | { awk -F'\t' '$1 ~ /✓/' || true; })
+  if [[ -n "$out" ]]; then printf '%s\n' "$out" | column -t -s $'\t'
+  else echo "No ${REPO_NAME} packages installed."; fi
+}
+
+cmd_info() { [[ $# -gt 0 ]] || die "usage: paw info <pkg>"; pacman -Si "${REPO_NAME}/$1"; }
+
+usage() {
+  cat <<EOF
+paw — personal package repo front-end (repo: ${REPO_NAME})
+
+Usage:
+  paw                       browse & install (gum TUI)
+  paw <pkg>...              install package(s)
+  paw install|-S <pkg>...   install package(s)
+  paw search|-Ss [term]     search available packages
+  paw update|-Syu           sync & upgrade everything
+  paw remove|-R <pkg>...    uninstall package(s)
+  paw list|-Q               list installed paw packages
+  paw info|-Si <pkg>        show package details
+  paw help|-h               this help
+EOF
+}
+
+main() {
+  local cmd="${1:-browse}"; shift || true
+  case "$cmd" in
+    browse|"")            cmd_browse ;;
+    -S|install|in|i)      if [[ $# -gt 0 ]]; then cmd_install "$@"; else cmd_browse; fi ;;
+    -Ss|search|se|s)      cmd_search "${1:-}" ;;
+    -Syu|-Su|-Sy|update|upgrade|up|u) cmd_update ;;
+    -R|-Rns|remove|rm|r)  cmd_remove "$@" ;;
+    -Q|-Qs|list|ls|l)     cmd_list ;;
+    -Si|info)             cmd_info "$@" ;;
+    -h|--help|help)       usage ;;
+    -*)                   die "unknown option: $cmd (try: paw --help)" ;;
+    *)                    cmd_install "$cmd" "$@" ;;
+  esac
+}
+
+main "$@"

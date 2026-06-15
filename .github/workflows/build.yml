@@ -1,0 +1,53 @@
+name: build-repo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages.json
+      - paw
+      - paw.conf
+      - packaging/**
+      - scripts/**
+      - .github/workflows/build.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+    steps:
+      - name: System update & tools
+        run: pacman -Syu --noconfirm --needed git jq github-cli
+
+      - uses: actions/checkout@v4
+
+      - name: Create build user
+        run: |
+          useradd -m builder
+          printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Import signing key
+        run: |
+          install -d -m 700 -o builder -g builder /home/builder/.gnupg
+          printf '%s' "$GPG_PRIVATE_KEY" | sudo -u builder -H gpg --batch --import
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+
+      - name: Build & sign repo
+        run: sudo -u builder -H bash scripts/build-repo.sh
+
+      - name: Publish to GitHub Release
+        run: |
+          # shellcheck disable=SC1091
+          source ./paw.conf
+          gh release view "$PAW_RELEASE_TAG" >/dev/null 2>&1 \
+            || gh release create "$PAW_RELEASE_TAG" --title "paw repo" --notes "Rolling package repository"
+          gh release upload "$PAW_RELEASE_TAG" out/* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

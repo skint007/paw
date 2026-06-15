@@ -1,0 +1,13 @@
+# build artifacts
+/out/
+/.build/
+
+# copied here by build-repo.sh; canonical copies live at repo root
+/packaging/paw/paw
+/packaging/paw/LICENSE
+
+# makepkg leftovers
+*.pkg.tar.zst
+*.pkg.tar.zst.sig
+src/
+pkg/
