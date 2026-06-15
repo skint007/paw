@@ -22,8 +22,8 @@ cp LICENSE packaging/paw/LICENSE
 build_dir packaging/paw
 
 echo ":: Building manifest packages"
-jq -r '.packages[] | [.name, .repo, (.branch // "")] | @tsv' packages.json |
-while IFS=$'\t' read -r name repo branch; do
+jq -r '.packages[] | [.name, .repo, (.branch // ""), (.subdir // "")] | @tsv' packages.json |
+while IFS=$'\t' read -r name repo branch subdir; do
   echo "   - $name"
   dir="$WORK/$name"
   if [[ -d "$dir/.git" ]]; then
@@ -32,7 +32,8 @@ while IFS=$'\t' read -r name repo branch; do
   else
     git clone --depth 1 ${branch:+--branch "$branch"} "$repo" "$dir"
   fi
-  build_dir "$dir"
+  # subdir lets a project keep its PKGBUILD in e.g. aur/ instead of the repo root
+  build_dir "$dir${subdir:+/$subdir}"
 done
 
 echo ":: Building repo database"

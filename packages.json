@@ -1,3 +1,11 @@
 {
-  "packages": []
+  "packages": [
+    {
+      "name": "yt-transcript",
+      "desc": "Extract the transcript from a YouTube video to stdout (wraps yt-dlp)",
+      "repo": "https://github.com/skint007/yt-transcript.git",
+      "branch": "main",
+      "subdir": "aur"
+    }
+  ]
 }
