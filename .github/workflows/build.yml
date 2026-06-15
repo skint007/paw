@@ -33,16 +33,33 @@ jobs:
           chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Import signing key
+        shell: bash
         run: |
           install -d -m 700 -o builder -g builder /home/builder/.gnupg
+          # Allow non-interactive (headless) signing — no pinentry/tty available.
+          sudo -u builder -H bash -c '
+            printf "allow-loopback-pinentry\ndefault-cache-ttl 7200\nmax-cache-ttl 7200\n" > ~/.gnupg/gpg-agent.conf
+            printf "pinentry-mode loopback\n" > ~/.gnupg/gpg.conf
+          '
           printf '%s' "$GPG_PRIVATE_KEY" | sudo -u builder -H gpg --batch --import
+          sudo -u builder -H gpg-connect-agent reloadagent /bye
+          # If the key has a passphrase, set a GPG_PASSPHRASE secret; this caches
+          # it in the agent so makepkg can sign unattended. Harmless if unset.
+          if [ -n "${GPG_PASSPHRASE:-}" ]; then
+            source ./paw.conf
+            echo cache | sudo -u builder -H gpg --batch --yes --pinentry-mode loopback \
+              --passphrase "$GPG_PASSPHRASE" --local-user "$PAW_GPG_KEYID" \
+              --output /dev/null --detach-sign - || true
+          fi
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Build & sign repo
         run: sudo -u builder -H bash scripts/build-repo.sh
 
       - name: Publish to GitHub Release
+        shell: bash
         run: |
           # shellcheck disable=SC1091
           source ./paw.conf
