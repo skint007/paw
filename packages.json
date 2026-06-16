@@ -6,6 +6,13 @@
       "repo": "https://github.com/skint007/yt-transcript.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "cmd-helper",
+      "desc": "AI-powered command-line helper for Ollama, OpenAI, Anthropic, and DeepSeek",
+      "repo": "https://github.com/skint007/cmd-helper.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }

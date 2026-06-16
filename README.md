@@ -109,6 +109,28 @@ bash scripts/build-repo.sh    # produces ./out/ with the signed repo
 
 You can point a test `pacman.conf` at `Server = file:///path/to/out` to try it.
 
+## How rebuilds work (incremental)
+
+CI doesn't rebuild every package on every run. Before building, it **restores the
+currently published repo** into `out/`, then for each manifest entry it checks the
+source repo's HEAD commit with `git ls-remote` (no clone) against `out/state.json`:
+
+- **commit unchanged** → the existing built package is carried forward (no rebuild),
+- **commit changed / new package** → it's cloned and rebuilt, replacing the old version,
+- **removed from the manifest** → its package is pruned from the repo.
+
+Only changed files are re-uploaded, and stale assets (old versions, removed packages)
+are deleted from the release. So pushing one new package builds one package — the rest
+are carried forward in seconds.
+
+The commit SHA is an exact proxy for "would the version change?" — any source edit,
+`pkgrel` bump, or `-bin` version bump is a commit, so it's always caught. `pkgver()`
+still runs during the rebuild to produce the actual version consumers see.
+
+**Triggers:** a push to this repo, **a nightly schedule** (so updates to your package
+repos get picked up automatically), or `gh workflow run build-repo` on demand. A run
+where nothing changed is a near-instant no-op.
+
 ---
 
 ## Notes & caveats

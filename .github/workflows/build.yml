@@ -10,6 +10,8 @@ on:
       - packaging/**
       - scripts/**
       - .github/workflows/build.yml
+  schedule:
+    - cron: '0 8 * * *'   # daily 08:00 UTC — rebuild any package whose source repo changed
   workflow_dispatch:
 
 permissions:
@@ -31,6 +33,20 @@ jobs:
           useradd -m builder
           printf 'builder ALL=(ALL) NOPASSWD: ALL\n' > /etc/sudoers.d/builder
           chown -R builder:builder "$GITHUB_WORKSPACE"
+
+      - name: Restore previous repo
+        shell: bash
+        run: |
+          # shellcheck disable=SC1091
+          source ./paw.conf
+          mkdir -p out
+          # Pull the currently published repo so unchanged packages can be carried
+          # forward instead of rebuilt. Missing on the very first run — that's fine.
+          gh release download "$PAW_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir out --clobber \
+            || echo "No previous release to restore (first run)."
+          chown -R builder:builder out
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Import signing key
         shell: bash
@@ -63,9 +79,31 @@ jobs:
         run: |
           # shellcheck disable=SC1091
           source ./paw.conf
-          gh release view "$PAW_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
-            || gh release create "$PAW_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
-                 --title "paw repo" --notes "Rolling package repository"
-          gh release upload "$PAW_RELEASE_TAG" out/* --repo "$GITHUB_REPOSITORY" --clobber
+          TAG="$PAW_RELEASE_TAG"; REPO="$GITHUB_REPOSITORY"
+          gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 \
+            || gh release create "$TAG" --repo "$REPO" --title "paw repo" --notes "Rolling package repository"
+
+          if [[ ! -s out/.upload ]]; then
+            echo "Nothing changed — no assets to publish."
+            exit 0
+          fi
+
+          # Desired repo contents = non-hidden files in out/.
+          mapfile -t desired < <(cd out && ls -1 | grep -v '^\.')
+
+          # Delete release assets no longer part of the repo (old versions of
+          # rebuilt packages, or packages removed from the manifest).
+          for asset in $(gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name'); do
+            if ! printf '%s\n' "${desired[@]}" | grep -qxF "$asset"; then
+              echo "  - deleting stale asset: $asset"
+              gh release delete-asset "$TAG" "$asset" --repo "$REPO" -y || true
+            fi
+          done
+
+          # Upload only the files that changed this run.
+          files=()
+          while IFS= read -r f; do [[ -n "$f" ]] && files+=("out/$f"); done < out/.upload
+          echo ":: Uploading ${#files[@]} changed file(s)"
+          gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
