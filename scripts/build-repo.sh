@@ -142,7 +142,10 @@ gpg --export --armor "$PAW_GPG_KEYID" > "$OUT/paw.pub"
 mark_upload "paw.pub"
 
 # Keep only entries that still exist — a split/debug package may have been built
-# and then pruned (e.g. a PKGBUILD missing options=('!debug')).
-sort -u "$OUT/.upload" | while IFS= read -r f; do [[ -e "$OUT/$f" ]] && printf '%s\n' "$f"; done > "$OUT/.upload.tmp"
+# and then pruned (e.g. a PKGBUILD missing options=('!debug')). The `if` form keeps
+# the loop body's status 0 so a trailing missing entry can't trip `set -e`/pipefail.
+sort -u "$OUT/.upload" | while IFS= read -r f; do
+  if [[ -n "$f" && -e "$OUT/$f" ]]; then printf '%s\n' "$f"; fi
+done > "$OUT/.upload.tmp"
 mv "$OUT/.upload.tmp" "$OUT/.upload"
 echo "✓ Repo ready in $OUT ($(grep -c . "$OUT/.upload") file(s) to upload)"
