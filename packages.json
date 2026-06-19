@@ -41,6 +41,13 @@
       "repo": "https://github.com/skint007/ollama-cli-rs.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "ssh-setup",
+      "desc": "Generate, rotate, and install SSH keys and manage ~/.ssh/config entries",
+      "repo": "https://github.com/skint007/ssh-setup.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }
