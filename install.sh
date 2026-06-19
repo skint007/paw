@@ -15,8 +15,11 @@ KEY_URL="${SERVER}/paw.pub"
 
 command -v pacman >/dev/null || { echo "This installer is for Arch-based systems (pacman not found)."; exit 1; }
 
-echo ":: Installing prerequisites (gum, expac)…"
-sudo pacman -S --needed --noconfirm gum expac
+if ! command -v yay >/dev/null 2>&1 && ! command -v paru >/dev/null 2>&1; then
+  echo "!! Note: the 'paw' command is a shortcut around an AUR helper, but none was"
+  echo "   found. Install yay or paru to use it. (The repo itself works with plain"
+  echo "   pacman or any helper regardless.)"
+fi
 
 echo ":: Importing signing key…"
 tmp=$(mktemp)
@@ -41,4 +44,4 @@ echo ":: Syncing and installing paw…"
 sudo pacman -Sy
 sudo pacman -S --needed --noconfirm paw
 
-echo "✓ Done. Run 'paw' to browse packages."
+echo "✓ Done. Run 'paw' to list packages, or 'paw <pkg>' to install."

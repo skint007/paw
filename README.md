@@ -89,15 +89,22 @@ That imports your key, adds `[paw]` to `pacman.conf`, and installs `paw`.
 
 ## Using paw
 
+`paw` is a thin, repo-scoped shortcut around an AUR helper (it prefers `yay`,
+falls back to `paru`; override with `PAW_HELPER=paru`). It's optional sugar —
+`yay -Sl paw`, `yay -S <pkg>`, `yay` all work the same.
+
 ```
-paw                 browse & install (TUI)
-paw <pkg>           install
-paw search <term>   search
-paw update          sync & upgrade (pacman -Syu)
-paw remove <pkg>    uninstall
-paw list            installed paw packages
-paw info <pkg>      details
+paw                 list packages in the paw repo   (yay -Sl paw)
+paw <pkg>           install from paw                 (yay -S paw/<pkg>)
+paw search <term>   search the paw repo
+paw update          full system upgrade              (yay)
+paw remove <pkg>    uninstall                        (yay -Rns <pkg>)
+paw info <pkg>      details                          (yay -Si paw/<pkg>)
+paw -Ss <term>      anything starting with - is passed straight to the helper
 ```
+
+Note: packages with AUR dependencies (e.g. clipboard-typer needs `python-pynput`)
+install via `yay`/`paru` only — plain `pacman -S` can't resolve the AUR dep.
 
 ## Build locally (testing)
 
