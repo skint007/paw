@@ -13,6 +13,20 @@
       "repo": "https://github.com/skint007/cmd-helper.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "clipboard-typer",
+      "desc": "Type clipboard contents keystroke-by-keystroke into the active window",
+      "repo": "https://github.com/skint007/clipboard-typer.git",
+      "branch": "main",
+      "subdir": "aur"
+    },
+    {
+      "name": "pz-mod-manager",
+      "desc": "Desktop application for managing Project Zomboid server mod lists",
+      "repo": "https://github.com/skint007/project-zomboid-modid.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }
