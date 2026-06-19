@@ -71,6 +71,19 @@ jobs:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
 
+      - name: Install AUR helper (paru)
+        shell: bash
+        run: |
+          # Lets the builder resolve AUR build-dependencies (e.g. python-pynput).
+          # paru-bin is prebuilt, so this is quick (no Rust compile).
+          sudo -u builder -H bash -c '
+            set -e
+            d=$(mktemp -d)
+            git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$d/paru-bin"
+            cd "$d/paru-bin"
+            makepkg -si --noconfirm
+          '
+
       - name: Build & sign repo
         run: sudo -u builder -H bash scripts/build-repo.sh
 
@@ -107,3 +120,13 @@ jobs:
           gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Flag build failures
+        shell: bash
+        run: |
+          if [[ -s out/.failed ]]; then
+            echo "::error::These packages failed to build (the successful ones were still published):"
+            cat out/.failed
+            exit 1
+          fi
+          echo "All packages built successfully."

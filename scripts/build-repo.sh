@@ -26,6 +26,7 @@ mark_upload() { printf '%s\n' "$1" >> "$OUT/.upload"; }
 
 CHANGED=""                              # set when anything is built or pruned
 declare -A KEEP                         # pkgnames that should stay in the repo
+FAILED=()                              # pkgnames that failed to build this run
 statelines=""                          # name<TAB>sha lines for the new state.json
 
 # pkgname from a pacman filename (pkgver/pkgrel/arch never contain hyphens).
@@ -50,12 +51,29 @@ have_pkg_files() {  # $1 = pkgname — true if OUT already holds a build of it
   return 1
 }
 
-build_into_out() {  # $1 = dir with PKGBUILD ; $2 = pkgname (for cleanup)
-  ( cd "$1" && makepkg -cf -s --noconfirm --sign --key "$PAW_GPG_KEYID" )
-  remove_pkg_files "$2"                 # clear any older version first
+build_into_out() {  # $1 = dir with PKGBUILD ; $2 = pkgname. Returns 1 if the build fails.
+  local dir="$1" name="$2"
+  # Fast path: makepkg -s resolves deps from the official repos. Only touch OUT on
+  # success, so a failed rebuild keeps the old version.
+  if ! ( cd "$dir" && makepkg -scf --noconfirm --sign --key "$PAW_GPG_KEYID" ); then
+    # It may have failed because a dependency lives in the AUR. If an AUR helper is
+    # present (CI installs paru), install the PKGBUILD's deps through it and retry.
+    command -v paru >/dev/null 2>&1 || return 1
+    echo "  ↻ $name: retrying with AUR deps resolved via paru"
+    local deps
+    mapfile -t deps < <(
+      cd "$dir" && bash -c 'source ./PKGBUILD; printf "%s\n" "${depends[@]}" "${makedepends[@]}" "${checkdepends[@]}"' 2>/dev/null \
+        | sed -E 's/[<>=].*//' | grep -v '^[[:space:]]*$' | sort -u
+    )
+    if ((${#deps[@]})); then
+      paru -S --needed --asdeps --noconfirm --skipreview "${deps[@]}" || return 1
+    fi
+    ( cd "$dir" && makepkg -dcf --noconfirm --sign --key "$PAW_GPG_KEYID" ) || return 1
+  fi
+  remove_pkg_files "$name"               # replace any older version
   local f
   shopt -s nullglob
-  for f in "$1"/*.pkg.tar.zst; do
+  for f in "$dir"/*.pkg.tar.zst; do
     cp "$f" "$f.sig" "$OUT"/
     mark_upload "$(basename "$f")"
     mark_upload "$(basename "$f").sig"
@@ -74,7 +92,7 @@ else
   echo "+ paw (building)"
   cp paw packaging/paw/paw
   cp LICENSE packaging/paw/LICENSE
-  build_into_out packaging/paw paw
+  build_into_out packaging/paw paw || { echo "✗ paw FAILED to build"; FAILED+=("paw"); }
 fi
 statelines+="paw	$paw_ref"$'\n'
 
@@ -95,9 +113,14 @@ while IFS=$'\t' read -r name repo branch subdir; do
   echo "+ $name (building @ ${ref:-unknown})"
   dir="$WORK/$name"
   rm -rf "$dir"
-  git clone --depth 1 ${branch:+--branch "$branch"} "$repo" "$dir"
-  build_into_out "$dir${subdir:+/$subdir}" "$name"
-  statelines+="$name	${ref:-$(git -C "$dir" rev-parse HEAD)}"$'\n'
+  if git clone --depth 1 ${branch:+--branch "$branch"} "$repo" "$dir" \
+     && build_into_out "$dir${subdir:+/$subdir}" "$name"; then
+    statelines+="$name	${ref:-$(git -C "$dir" rev-parse HEAD)}"$'\n'
+  else
+    # Leave it out of state so it's retried next run; KEEP preserves any prior build.
+    echo "✗ $name FAILED to build — keeping any previous version, will retry next run"
+    FAILED+=("$name")
+  fi
 done < <(jq -r '.packages[] | [.name, .repo, (.branch // ""), (.subdir // "")] | @tsv' packages.json)
 
 # --- prune packages no longer in the manifest ---
@@ -111,6 +134,14 @@ for f in "$OUT"/*.pkg.tar.zst; do
   fi
 done
 shopt -u nullglob
+
+# Record build failures so the workflow can flag them AFTER publishing the successes.
+if [[ ${#FAILED[@]} -gt 0 ]]; then
+  printf '%s\n' "${FAILED[@]}" > "$OUT/.failed"
+  echo "⚠ ${#FAILED[@]} package(s) failed to build: ${FAILED[*]}"
+else
+  rm -f "$OUT/.failed"
+fi
 
 if [[ -z "$CHANGED" ]]; then
   echo "✓ Nothing changed — repo already up to date."
