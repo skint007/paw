@@ -27,6 +27,13 @@
       "repo": "https://github.com/skint007/project-zomboid-modid.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "md2html",
+      "desc": "A fast, lightweight CLI tool that converts Markdown files to standalone HTML documents",
+      "repo": "https://github.com/skint007/md2html.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }
