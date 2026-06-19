@@ -75,12 +75,13 @@ jobs:
         shell: bash
         run: |
           # Lets the builder resolve AUR build-dependencies (e.g. python-pynput).
-          # paru-bin is prebuilt, so this is quick (no Rust compile).
+          # Build from source (NOT paru-bin): the CI's `pacman -Syu` bumps the libalpm
+          # soname, and a prebuilt paru then dies with "libalpm.so.NN not found".
           sudo -u builder -H bash -c '
             set -e
             d=$(mktemp -d)
-            git clone --depth 1 https://aur.archlinux.org/paru-bin.git "$d/paru-bin"
-            cd "$d/paru-bin"
+            git clone --depth 1 https://aur.archlinux.org/paru.git "$d/paru"
+            cd "$d/paru"
             makepkg -si --noconfirm
           '
 
