@@ -48,6 +48,13 @@
       "repo": "https://github.com/skint007/ssh-setup.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "whos-watching",
+      "desc": "Check active Emby/Jellyfin streams and Sonarr/Radarr encoding jobs from the terminal",
+      "repo": "https://github.com/skint007/whos-watching.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }
