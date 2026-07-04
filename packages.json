@@ -29,9 +29,9 @@
       "subdir": "aur"
     },
     {
-      "name": "md2html",
+      "name": "mdhtml",
       "desc": "A fast, lightweight CLI tool that converts Markdown files to standalone HTML documents",
-      "repo": "https://github.com/skint007/md2html.git",
+      "repo": "https://github.com/skint007/mdhtml.git",
       "branch": "main",
       "subdir": "aur"
     },
