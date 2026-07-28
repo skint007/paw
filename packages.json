@@ -55,6 +55,13 @@
       "repo": "https://github.com/skint007/whos-watching.git",
       "branch": "main",
       "subdir": "aur"
+    },
+    {
+      "name": "gh-asset",
+      "desc": "Download GitHub issue/PR user-attachments assets using GitHub CLI authentication",
+      "repo": "https://github.com/skint007/gh-asset-pkg.git",
+      "branch": "main",
+      "subdir": "aur"
     }
   ]
 }
