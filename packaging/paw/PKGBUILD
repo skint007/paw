@@ -1,6 +1,6 @@
 # Maintainer: skint007 <paw-repo.cyclic942@passmail.net>
 pkgname=paw
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="Repo-scoped shortcut around yay/paru for the personal paw repo"
 arch=('any')
