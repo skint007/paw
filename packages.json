@@ -15,6 +15,12 @@
       "subdir": "aur"
     },
     {
+      "name": "python-pynput",
+      "desc": "Python library to monitor and control user input devices",
+      "repo": "https://aur.archlinux.org/python-pynput.git",
+      "branch": "master"
+    },
+    {
       "name": "clipboard-typer",
       "desc": "Type clipboard contents keystroke-by-keystroke into the active window",
       "repo": "https://github.com/skint007/clipboard-typer.git",

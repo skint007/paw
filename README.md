@@ -67,8 +67,8 @@ fast — no compiling on their end.
 
 ## Adding a package
 
-Each package is a normal git repo containing a `PKGBUILD` (a `-git` or `-bin`
-PKGBUILD both work — the `aur-package` skill can scaffold these).
+Each package is a git repo containing a `PKGBUILD`. Project repos usually keep it
+in `aur/`; upstream AUR repos keep it at the repo root.
 
 ```bash
 scripts/add-package.sh        # interactive
@@ -102,9 +102,6 @@ paw remove <pkg>    uninstall                        (yay -Rns <pkg>)
 paw info <pkg>      details                          (yay -Si paw/<pkg>)
 paw -Ss <term>      anything starting with - is passed straight to the helper
 ```
-
-Note: packages with AUR dependencies (e.g. clipboard-typer needs `python-pynput`)
-install via `yay`/`paru` only — plain `pacman -S` can't resolve the AUR dep.
 
 ## Build locally (testing)
 
